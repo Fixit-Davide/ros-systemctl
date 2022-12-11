@@ -2,11 +2,65 @@
 #include <systemd/sd-bus.h>
 //#include "ros2_srv/srv/Callersrv.hpp"
 #include <std_srvs/srv/empty.hpp>
-//callback functions:
-void () {
+
+using std::placeholders::_1;
+using std::placeholders::_2;
+
+namespace addons{
+
+  SystemctlController::SystemctlController(const rclcpp::NodeOptions & options) : Node("systemctl_controller", options){
+
+    start_service_name_ = declare_parameter<std::string>("services.start", "");
+    stop_service_name_ = declare_parameter<std::string>("services.stop", "");
+
+    start_srv_ = create_service<std_srvs::srv::Empty>(start_service_name_, std::bind(&SystemController::start_srv, this, _1, _2));
+    stop_srv_ = create_service<std_srvs::srv::Empty>(stop_service_name_, std::bind(&SystemController::stop_srv, this, _1, _2));   
+  }
+
+  void SystemController::start_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
+                                    std::shared_ptr<std_srvs::srv::Empty::Response> ) {
+    // open the systemd bus
+    sd_bus *bus = NULL;
+    int ret = sd_bus_open_system(&bus);
+    if (ret < 0) {
+      return;
+    }
+
+    const char *service = "my_service";
+    const char *interface = "org.freedesktop.systemd1.Service";
+    const char *method = "Start";
+    ret = sd_bus_call_method(bus, service, interface, method, NULL, NULL);
+    if (ret < 0) {
+	    RCLCPP_INFO(get_logger(), "Could not Start the Service. Return: %d ", ret);
+    }
+      // Clean up
+    sd_bus_unref(bus);
+  }
+
+  void SystemController::stop_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
+                                    std::shared_ptr<std_srvs::srv::Empty::Response> ) {
+    // open the systemd bus
+    sd_bus *bus = NULL;
+    int ret = sd_bus_open_system(&bus);
+    if (ret < 0) {
+      return;
+    }
+
+    const char *service = "my_service";
+    const char *interface = "org.freedesktop.systemd1.Service";
+    const char *method = "Stop";
+    ret = sd_bus_call_method(bus, service, interface, method, NULL, NULL);
+    if (ret < 0) {
+	    RCLCPP_INFO(get_logger(), "Could not Stop the Service. Return: %d ", ret);
+    }
+    sd_bus_unref(bus);
+  }
+
 
 }
 
+
+/*
 class SystemctlController : public rclcpp::Node {
     public:
         SystemctlController() : Node("systemctl_controller") {
@@ -22,7 +76,7 @@ class SystemctlController : public rclcpp::Node {
 }
 
 private:
-
+*/
 /*
 #include <rclcpp/rclcpp.hpp>
 #include <std_srvs/srv/empty.hpp>
