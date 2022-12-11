@@ -2,13 +2,15 @@
 #include <systemd/sd-bus.h>
 //#include "ros2_srv/srv/Callersrv.hpp"
 #include <std_srvs/srv/empty.hpp>
+#include "systemctl_node.hpp"
 
 using std::placeholders::_1;
 using std::placeholders::_2;
 
 namespace addons{
 
-  SystemctlController::SystemctlController(const rclcpp::NodeOptions & options) : Node("systemctl_controller", options){
+  SystemctlController::SystemctlController(const rclcpp::NodeOptions & options) 
+  : Node("systemctl_controller", options) {
 
     start_service_name_ = declare_parameter<std::string>("services.start", "");
     stop_service_name_ = declare_parameter<std::string>("services.stop", "");
@@ -17,46 +19,86 @@ namespace addons{
     stop_srv_ = create_service<std_srvs::srv::Empty>(stop_service_name_, std::bind(&SystemController::stop_srv, this, _1, _2));   
   }
 
-  void SystemController::start_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
+  SystemctlController::~SystemctlController()
+  {
+    // free the Bus when the destructor is called
+    sd_bus_unref(bus);
+  }
+
+  void SystemctlController::start_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
                                     std::shared_ptr<std_srvs::srv::Empty::Response> ) {
     // open the systemd bus
     sd_bus *bus = NULL;
+    sd_bus_error *err = SD_BUS_ERROR_NULL;
+
     int ret = sd_bus_open_system(&bus);
+    // analyze the sd_bus_default_system
     if (ret < 0) {
+	    RCLCPP_INFO(get_logger(), "Could not open the Bus. Return: %d ", ret);     
       return;
     }
 
     const char *service = "my_service";
     const char *interface = "org.freedesktop.systemd1.Service";
     const char *method = "Start";
-    ret = sd_bus_call_method(bus, service, interface, method, NULL, NULL);
+    ret = sd_bus_call_method(bus, service, interface, method, err, NULL);
     if (ret < 0) {
 	    RCLCPP_INFO(get_logger(), "Could not Start the Service. Return: %d ", ret);
     }
       // Clean up
     sd_bus_unref(bus);
+    sd_bus_error_free(err);
   }
 
-  void SystemController::stop_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
+  void SystemctlController::stop_srv(const std::shared_ptr<std_srvs::srv::Empty::Request>
                                     std::shared_ptr<std_srvs::srv::Empty::Response> ) {
     // open the systemd bus
     sd_bus *bus = NULL;
+    sd_bus_error *err = SD_BUS_ERROR_NULL;
+   
     int ret = sd_bus_open_system(&bus);
     if (ret < 0) {
+      RCLCPP_INFO(get_logger(), "Could not open the Bus. Return: %d ", ret);     
       return;
     }
 
     const char *service = "my_service";
     const char *interface = "org.freedesktop.systemd1.Service";
     const char *method = "Stop";
-    ret = sd_bus_call_method(bus, service, interface, method, NULL, NULL);
+    ret = sd_bus_call_method(bus, service, interface, method, err, NULL);
     if (ret < 0) {
 	    RCLCPP_INFO(get_logger(), "Could not Stop the Service. Return: %d ", ret);
     }
     sd_bus_unref(bus);
+    sd_bus_error_free(err);
   }
 
+  void SystemctlController::query_status(const std::shared_ptr<std_srvs::srv::Empty::Request>
+                                      std::shared_ptr<std_srvs::srv::Empty::Response> ) {
+    // open the systemd bus
+    sd_bus *bus = NULL;
+    sd_bus_error *err = SD_BUS_ERROR_NULL;
+    int ret = sd_bus_open_system(&bus);
 
+    // analyze the sd_bus_default_system
+    if (ret < 0) {
+	    RCLCPP_INFO(get_logger(), "Could not open the Bus. Return: %d ", ret);     
+      return;
+    }
+
+    const char *service = "my_service";
+    const char *interface = "org.freedesktop.systemd1.Service";
+    const char *method = "ActiveState";
+    ret = sd_bus_get_property_string(bus, service, interface, method, err, NULL);
+    if (ret < 0) {
+      std::string err_msg(err.message);
+      RCLCPP_INFO(get_logger(), "Failed to get "+method+" for service "+service+". Error: "+err_msg);
+      // Clean error.
+      sd_bus_error_free(err);
+    }
+    // Clean bus.
+    sd_bus_unref(bus);
+  }
 }
 
 
