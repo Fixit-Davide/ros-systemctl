@@ -1,8 +1,11 @@
 systemctl_node:
   ros__parameters:
-    services:
+    services_name:
       start: "start_service"
       stop: "stop_service"
       restart: "restart_service"
       query: "query_service"
-
+    sys_services:
+    - myservice0
+    - myservice1
+    - myservice2

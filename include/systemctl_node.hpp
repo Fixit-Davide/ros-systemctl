@@ -2,7 +2,7 @@
 #define ROS2__SYSTEMCTLNODE
 
 #include <rclcpp/rclcpp.hpp>
-#include "std_srvs/srv/empty.hpp"
+#include "std_srvs/srv/trigger.hpp"
 
 
 namespace addons {
@@ -14,29 +14,28 @@ namespace addons {
 			
 			~SystemctlController(){};
 
-			void start_srv(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-									  	    std::shared_ptr<std_srvs::srv::Empty::Response> response); 
+			void service_call(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                                        std::shared_ptr<std_srvs::srv::Trigger::Response> response,
+                                        const std::string &method,
+                                        std::string sys_ser); 
 
-			void stop_srv(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-							          std::shared_ptr<std_srvs::srv::Empty::Response> response);		
+			void query_status(const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
+                        std::shared_ptr<std_srvs::srv::Trigger::Response> response,
+                        const std::string &property,
+                        std::string sys_res);
 
-			void query_status(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-							              std::shared_ptr<std_srvs::srv::Empty::Response> response);
-
-			void restart_srv(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
-							              std::shared_ptr<std_srvs::srv::Empty::Response> response);
-        
     private:
-    
+
       std::string start_service_name_;
       std::string stop_service_name_;
       std::string restart_service_name_;
       std::string query_service_name_;
- 
-      rclcpp::Service<std_srvs::srv::Empty>::SharedPtr start_srv_;
-      rclcpp::Service<std_srvs::srv::Empty>::SharedPtr stop_srv_;
-      rclcpp::Service<std_srvs::srv::Empty>::SharedPtr restart_srv_;
-      rclcpp::Service<std_srvs::srv::Empty>::SharedPtr query_srv_;
+      std::vector<std::string> sys_services_list;
+
+      std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> start_srvs_;
+      std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> stop_srvs_;
+      std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> restart_srvs_;
+      std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> query_srvs_;
   };
 } // namespace addons
 
