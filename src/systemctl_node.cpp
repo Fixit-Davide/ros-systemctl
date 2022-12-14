@@ -18,35 +18,22 @@ namespace addons{
     restart_service_name_ = declare_parameter<std::string>("services_name.restart", "restart_service");
     query_service_name_ = declare_parameter<std::string>("services_name.query", "query_service");
 
+    auto systemd_method_cb = [this](std::string systemd_unit, std::string systemd_method){
+      return [this, systemd_unit, systemd_method](const std::shared_ptr<std_srvs::srv::Trigger::Request> in, std::shared_ptr<std_srvs::srv::Trigger::Response> out) { 
+        this->service_call(in, out, systemd_method, systemd_unit);
+      };
+    };
+    auto systemd_query_cb = [this](std::string systemd_unit, std::string systemd_method){
+      return [this, systemd_unit, systemd_method](const std::shared_ptr<std_srvs::srv::Trigger::Request> in, std::shared_ptr<std_srvs::srv::Trigger::Response> out) { 
+        this->query_status(in, out, systemd_method, systemd_unit);
+      };
+    };
+
     for(std::string sys_ser : sys_services_list) {
-      start_srvs_.push_back(
-        create_service<std_srvs::srv::Trigger>(
-          sys_ser + "/" + start_service_name_,
-          [this, sys_ser](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-                          std::shared_ptr<std_srvs::srv::Trigger::Response> response) { this->service_call(request, response, "StartUnit", sys_ser);}
-        )
-      );
-      stop_srvs_.push_back(
-        create_service<std_srvs::srv::Trigger>(
-          sys_ser + "/" + stop_service_name_,
-          [this, sys_ser](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-                          std::shared_ptr<std_srvs::srv::Trigger::Response> response) { this->service_call(request, response, "StopUnit", sys_ser);}
-        )
-      );
-      restart_srvs_.push_back(
-        create_service<std_srvs::srv::Trigger>(
-          sys_ser + "/" + restart_service_name_,
-          [this, sys_ser](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-                          std::shared_ptr<std_srvs::srv::Trigger::Response> response) { this->service_call(request, response, "RestartUnit", sys_ser);}
-        )
-      );
-      query_srvs_.push_back(
-        create_service<std_srvs::srv::Trigger>(
-          sys_ser + "/" + query_service_name_,
-          [this, sys_ser](const std::shared_ptr<std_srvs::srv::Trigger::Request> request,
-                          std::shared_ptr<std_srvs::srv::Trigger::Response> response) { this->query_status(request, response, "ActiveState", sys_ser);}
-        )
-      );
+      start_srvs_.push_back( create_service<std_srvs::srv::Trigger>(sys_ser + "/" + start_service_name_, systemd_method_cb(sys_ser, "StartUnit")));
+      stop_srvs_.push_back( create_service<std_srvs::srv::Trigger>(sys_ser + "/" + stop_service_name_, systemd_method_cb(sys_ser, "StopUnit")));
+      restart_srvs_.push_back( create_service<std_srvs::srv::Trigger>(sys_ser + "/" + restart_service_name_, systemd_method_cb(sys_ser, "RestartUnit")));
+      query_srvs_.push_back( create_service<std_srvs::srv::Trigger>(sys_ser + "/" + query_service_name_, systemd_query_cb(sys_ser, "ActiveState")));
     }
   }
 
@@ -61,7 +48,7 @@ namespace addons{
     
     // analyze the sd_bus_default_system
     if (ret < 0) {
-	    RCLCPP_INFO(get_logger(), "Could not open the User_Bus. Return: %d ", ret);     
+	    RCLCPP_WARN(get_logger(), "Could not open the User_Bus. Return: %d ", ret);     
       return;
     }
     std::string appendix(".service");
@@ -77,20 +64,22 @@ namespace addons{
                             sys_ser.c_str(),  "replace" );                /* <arguments...> */
   
     if (ret < 0) {
-	    RCLCPP_INFO(get_logger(), "Could not %s the Service. Return: %d ", method.c_str(), ret);
+	    RCLCPP_WARN(get_logger(), "%s call failed. Return: %d. ", method.c_str(), ret);
+      std::string error_str(err.message);
+      std::string debug_str(method + " call failed: " + error_str);
       response->success = false;
-      std::string debug_str("Service method " + method + " called unsuccessfully");
       response->message = debug_str;
+      return;
     }
+    RCLCPP_INFO(get_logger(), "Systemd method: %s called successfully.", method.c_str());    
     // Clean up the memory:
     sd_bus_error_free(&err);
     sd_bus_message_unref(msg);
     sd_bus_unref(bus);
+    std::string out_str("Systemd method: " + method + " called successfully.");
     response->success = true;
-    std::string debug_str("Service method " + method + " called successfully");
-    response->message = debug_str;
+    response->message = out_str;
   }
-
 
   void SystemctlController::query_status(const std::shared_ptr<std_srvs::srv::Trigger::Request>,
                                          std::shared_ptr<std_srvs::srv::Trigger::Response> response,
@@ -102,7 +91,7 @@ namespace addons{
     int ret = sd_bus_open_user(&bus);
     
     if (ret < 0) {
-	    RCLCPP_INFO(get_logger(), "Could not open the Bus. Return: %d ", ret);     
+	    RCLCPP_WARN(get_logger(), "Could not open the Bus. Return: %d ", ret);     
       return;
     }
     std::string path_str("/org/freedesktop/systemd1/unit/" + sys_res + "_2eservice");
@@ -114,21 +103,21 @@ namespace addons{
                                     &err,                                                   /* object error */
                                     &state);                                                /* object state */
     
-    if (ret < 0)
-    {
-      std::string err_msg(err.message);
-	    RCLCPP_INFO(get_logger(), "No QUERY status. Error: %s", err_msg.c_str());
+    if (ret < 0) {
+      std::string error_str(err.message);
+	    RCLCPP_WARN(get_logger(), "Could NOT query the status of the service. Error: %s. Return: %d.", error_str.c_str(), ret);
       response->success = false;
+      return;
     }
 
-    std::string msg(state);
-    RCLCPP_INFO(get_logger(), "Service's Status: %s", msg.c_str());
-    
+    std::string state_str(state);
+    std::string out_str("Systemd service: " + sys_res + " status: " + state_str);
+    RCLCPP_INFO(get_logger(), "Service %s Status: %s.", sys_res.c_str(), state_str.c_str());    
     // Clean up
     sd_bus_error_free(&err);
-    free (state);
     sd_bus_unref(bus);
+    free (state);
     response->success = true;
-    response->message = msg;
+    response->message = out_str;
   }
 } // namespace addons
