@@ -1,7 +1,7 @@
-#include <rclcpp/rclcpp.hpp>
-#include <systemd/sd-bus.h>
-//#include "ros2_srv/srv/Callersrv.hpp"
-#include <std_srvs/srv/trigger.hpp>
+/*
+Copyright 2023 Thales Alenia Space
+*/
+
 #include "systemctl_node.hpp"
 
 using std::placeholders::_1;
@@ -75,15 +75,15 @@ void SystemctlController::service_call(
   std::string appendix(".service");
   sys_ser.append(appendix);
   ret = sd_bus_call_method(
-    bus,                                                                  /* <bus>       */
-    "org.freedesktop.systemd1",                                           /* <service>   */
-    "/org/freedesktop/systemd1",                                          /* <path>      */
-    "org.freedesktop.systemd1.Manager",                                   /* <interface> */
-    method.c_str(),                                                       /* <method>    */
-    &err,                                                                 /* object to return error in */
-    &msg,                                                                 /* return message on success */
-    "ss",                                                                 /* <input_signature (string-string)> */
-    sys_ser.c_str(), "replace");                                          /* <arguments...> */
+    bus,                                 /* <bus>       */
+    "org.freedesktop.systemd1",          /* <service>   */
+    "/org/freedesktop/systemd1",         /* <path>      */
+    "org.freedesktop.systemd1.Manager",  /* <interface> */
+    method.c_str(),                      /* <method>    */
+    &err,                                /* object to return error in */
+    &msg,                                /* return message on success */
+    "ss",                                /* <input_signature (string-string)> */
+    sys_ser.c_str(), "replace");         /* <arguments...> */
 
   if (ret < 0) {
     RCLCPP_WARN(get_logger(), "%s call failed. Return: %d. ", method.c_str(), ret);
@@ -120,13 +120,13 @@ void SystemctlController::query_status(
   }
   std::string path_str("/org/freedesktop/systemd1/unit/" + sys_res + "_2eservice");
   ret = sd_bus_get_property_string(
-    bus,                                                                                    /* <bus>        */
-    "org.freedesktop.systemd1",                                                             /* <service>    */
-    path_str.c_str(),                                                                       /* <path>       */
-    "org.freedesktop.systemd1.Unit",                                                        /* <interface>  */
-    property.c_str(),                                                                       /* <method>     */
-    &err,                                                                                   /* object error */
-    &state);                                                                                /* object state */
+    bus,
+    "org.freedesktop.systemd1",
+    path_str.c_str(),
+    "org.freedesktop.systemd1.Unit",
+    property.c_str(),
+    &err,
+    &state);
 
   if (ret < 0) {
     std::string error_str(err.message);
@@ -147,4 +147,4 @@ void SystemctlController::query_status(
   response->success = true;
   response->message = out_str;
 }
-} // namespace addons
+}  // namespace addons

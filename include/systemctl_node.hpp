@@ -1,9 +1,18 @@
-#ifndef ROS2__SYSTEMCTLNODE
-#define ROS2__SYSTEMCTLNODE
+/*
+Copyright 2023 Thales Alenia Space
+*/
+
+#ifndef SYSTEMCTL_NODE_HPP_
+#define SYSTEMCTL_NODE_HPP_
+
+#include <systemd/sd-bus.h>
+
+#include <string>
+#include <memory>
+#include <vector>
 
 #include <rclcpp/rclcpp.hpp>
-#include "std_srvs/srv/trigger.hpp"
-
+#include <std_srvs/srv/trigger.hpp>
 
 namespace addons
 {
@@ -11,7 +20,7 @@ namespace addons
 class SystemctlController : public rclcpp::Node
 {
 public:
-  SystemctlController(const rclcpp::NodeOptions & options);
+  explicit SystemctlController(const rclcpp::NodeOptions & options);
 
   ~SystemctlController() {}
 
@@ -39,7 +48,7 @@ private:
   std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> restart_srvs_;
   std::vector<rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr> query_srvs_;
 };
-} // namespace addons
+}  // namespace addons
 
 
 #include "rclcpp_components/register_node_macro.hpp"
@@ -49,4 +58,4 @@ private:
 // is being loaded into a running process.
 RCLCPP_COMPONENTS_REGISTER_NODE(addons::SystemctlController)
 
-#endif //ROS2__SYSTEMCTLNODE
+#endif  // SYSTEMCTL_NODE_HPP_

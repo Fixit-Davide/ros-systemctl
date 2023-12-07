@@ -37,11 +37,11 @@ ament_target_dependencies(${PROJECT_NAME} SYSTEM rclcpp rcutils rclcpp_component
 target_link_libraries(${PROJECT_NAME} Systemd::Libsystemd)
 
 rclcpp_components_register_node(
-  ${PROJECT_NAME} 
+  ${PROJECT_NAME}
   PLUGIN "addons::SystemctlController"
   EXECUTABLE SystemctlControllerExecutable)
 
-install(TARGETS ${PROJECT_NAME} 
+install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin
